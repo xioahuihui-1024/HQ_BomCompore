@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BOM Diff</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#f5f6f8;--s:#fff;--bd:#e5e6eb;--bd2:#c9cdd4;
+  --t1:#1d2129;--t2:#4e5969;--t3:#86909c;--t4:#c9cdd4;
+  --blue:#165dff;--blue-h:#4080ff;--blue-l:#e8f3ff;
+  --green:#00b42a;--green-l:#e8ffea;
+  --red:#f53f3f;--red-l:#ffece8;
+  --orange:#ff7d00;--orange-l:#fff7e8;
+  --r:8px;--rl:12px;
+  --f:-apple-system,BlinkMacSystemFont,"SF Pro","Helvetica Neue",Arial,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+}
+html{font-size:14px}
+body{font-family:var(--f);background:var(--bg);color:var(--t1);-webkit-font-smoothing:antialiased}
+
+.app{max-width:1360px;margin:0 auto;padding:20px 32px 48px}
+
+/* ── HEADER ── */
+.hdr{display:flex;align-items:center;gap:10px;margin-bottom:24px}
+.hdr-bar{width:3px;height:20px;background:var(--blue);border-radius:2px}
+.hdr h1{font-size:17px;font-weight:600}
+.hdr .sub{font-size:13px;color:var(--t3);margin-left:6px}
+
+/* ── UPLOAD PANEL ── */
+.panel{
+  background:var(--s);border:1px solid var(--bd);border-radius:var(--rl);
+  padding:24px;margin-bottom:0;
+}
+.upload-grid{display:grid;grid-template-columns:1fr auto 1fr;gap:0;align-items:center;margin-bottom:20px}
+.upload-card{
+  border:2px dashed var(--bd);border-radius:var(--r);padding:24px;
+  text-align:center;cursor:pointer;transition:all .15s;position:relative;
+}
+.upload-card:hover{border-color:var(--blue);background:var(--blue-l)}
+.upload-card.over{border-color:var(--blue);background:var(--blue-l)}
+.upload-card.ok{border-style:solid;border-color:var(--green)}
+.upload-card input{position:absolute;inset:0;opacity:0;cursor:pointer;z-index:2}
+.uc-icon{
+  width:40px;height:40px;border-radius:var(--r);margin:0 auto 10px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:15px;font-weight:700;
+}
+.uc-a .uc-icon{background:var(--blue-l);color:var(--blue)}
+.uc-b .uc-icon{background:var(--orange-l);color:var(--orange)}
+.upload-card.ok .uc-icon{background:var(--green-l);color:var(--green)}
+.uc-label{font-size:14px;font-weight:500;margin-bottom:2px}
+.uc-hint{font-size:12px;color:var(--t3)}
+.uc-file{font-size:12px;color:var(--green);font-weight:600;margin-top:6px;word-break:break-all}
+
+/* Arrow between cards */
+.upload-arrow{display:flex;align-items:center;justify-content:center;padding:0 16px}
+.upload-arrow svg{color:var(--t4)}
+
+/* ── CONFIG ROW ── */
+.cfg-row{
+  display:flex;align-items:center;gap:12px;padding:16px 0;
+  border-top:1px solid var(--bd);flex-wrap:wrap;
+}
+.cfg-row .lbl{font-size:13px;color:var(--t2);font-weight:500;white-space:nowrap}
+.sel{
+  height:32px;padding:0 28px 0 10px;border:1px solid var(--bd);border-radius:6px;
+  background:var(--s) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath d='M2 3.5L5 6.5 8 3.5' fill='none' stroke='%2386909c' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 8px center/10px;
+  font-size:13px;color:var(--t1);appearance:none;cursor:pointer;outline:none;font-family:var(--f);
+}
+.sel:focus{border-color:var(--blue);box-shadow:0 0 0 2px var(--blue-l)}
+
+/* Toggle */
+.tog{display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;margin-left:4px}
+.tog-track{width:32px;height:18px;border-radius:9px;background:var(--bd2);position:relative;transition:background .2s}
+.tog-track.on{background:var(--blue)}
+.tog-dot{width:14px;height:14px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:transform .2s;box-shadow:0 1px 2px rgba(0,0,0,.15)}
+.tog-track.on .tog-dot{transform:translateX(14px)}
+.tog-txt{font-size:13px;color:var(--t2)}
+
+.cfg-sep{width:1px;height:20px;background:var(--bd)}
+
+/* Buttons */
+.btn{
+  height:36px;padding:0 24px;border:none;border-radius:6px;font-size:13px;font-weight:500;
+  cursor:pointer;font-family:var(--f);transition:all .15s;display:inline-flex;align-items:center;gap:6px;
+}
+.btn-go{background:var(--blue);color:#fff}
+.btn-go:hover{background:var(--blue-h)}
+.btn-go:disabled{background:var(--bd2);color:var(--t4);cursor:not-allowed}
+.btn-go.has-files{animation:pulse 1.5s ease-in-out 3}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(22,93,255,.3)}50%{box-shadow:0 0 0 8px rgba(22,93,255,0)}}
+.btn-g{background:transparent;color:var(--t2);border:1px solid var(--bd);height:32px;padding:0 12px;font-size:12px}
+.btn-g:hover{border-color:var(--blue);color:var(--blue)}
+
+/* ── RESULT AREA ── */
+.result{margin-top:20px}
+
+/* Stats */
+.stats{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.pill{
+  padding:5px 14px;border-radius:16px;font-size:13px;font-weight:500;
+  background:var(--s);border:1px solid var(--bd);
+}
+.pill b{font-weight:700}
+.pill-d{color:var(--red);border-color:var(--red)}
+.pill-a{color:var(--green);border-color:var(--green)}
+.pill-m{color:var(--orange);border-color:var(--orange)}
+
+/* Filter */
+.flt{display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.flt .sp{flex:1}
+.sbox{position:relative;width:220px}
+.sbox input{
+  width:100%;height:32px;padding:0 10px 0 30px;border:1px solid var(--bd);border-radius:6px;
+  font-size:13px;background:var(--s);color:var(--t1);outline:none;font-family:var(--f);
+}
+.sbox input:focus{border-color:var(--blue);box-shadow:0 0 0 2px var(--blue-l)}
+.sbox svg{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--t3);pointer-events:none}
+.fb{
+  height:28px;padding:0 12px;border-radius:14px;border:1px solid var(--bd);background:var(--s);
+  font-size:12px;color:var(--t2);cursor:pointer;font-family:var(--f);transition:all .12s;
+}
+.fb:hover{border-color:var(--blue);color:var(--blue)}
+.fb.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+
+/* Table */
+.tw{background:var(--s);border:1px solid var(--bd);border-radius:var(--rl);overflow:auto}
+table{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed}
+thead{position:sticky;top:0;z-index:3}
+thead th{
+  background:#f2f3f5;border-bottom:1px solid var(--bd);padding:10px 12px;
+  text-align:left;font-weight:600;font-size:12px;color:var(--t2);white-space:nowrap;
+}
+tbody td{padding:8px 12px;border-bottom:1px solid var(--bd);color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:#f9fafb}
+
+.ra td{background:var(--green-l)} .ra:hover td{filter:brightness(.97)}
+.rd td{background:var(--red-l)} .rd:hover td{filter:brightness(.97)}
+.rm td{background:var(--orange-l)} .rm:hover td{filter:brightness(.97)}
+
+.tg{display:inline-block;padding:1px 8px;border-radius:3px;font-size:11px;font-weight:700;line-height:18px;color:#fff}
+.tg-a{background:var(--green)} .tg-d{background:var(--red)} .tg-m{background:var(--orange)}
+.tg-s{background:var(--bd);color:var(--t3)}
+
+.dl{color:var(--red);font-size:12px;text-decoration:line-through;opacity:.8}
+.dn{color:var(--green);font-weight:600}
+.dx{display:flex;flex-direction:column;gap:1px}
+
+/* empty */
+.empty{text-align:center;padding:60px 20px;color:var(--t3)}
+.empty p{font-size:14px;margin-top:8px}
+
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:3px}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="hdr">
+    <div class="hdr-bar"></div>
+    <h1>BOM Diff</h1>
+    <span class="sub">物料清单版本对比</span>
+  </div>
+
+  <!-- PANEL -->
+  <div class="panel">
+    <div class="upload-grid">
+      <label class="upload-card uc-a" id="boxA">
+        <input type="file" id="fileA" accept=".xls,.xlsx">
+        <div class="uc-icon">A</div>
+        <div class="uc-label">文件 A <span style="color:var(--t3);font-weight:400">基准</span></div>
+        <div class="uc-hint">点击或拖入 XLS / XLSX</div>
+        <div class="uc-file" id="nameA"></div>
+      </label>
+
+      <div class="upload-arrow">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </div>
+
+      <label class="upload-card uc-b" id="boxB">
+        <input type="file" id="fileB" accept=".xls,.xlsx">
+        <div class="uc-icon">B</div>
+        <div class="uc-label">文件 B <span style="color:var(--t3);font-weight:400">对比</span></div>
+        <div class="uc-hint">点击或拖入 XLS / XLSX</div>
+        <div class="uc-file" id="nameB"></div>
+      </label>
+    </div>
+
+    <!-- CONFIG -->
+    <div class="cfg-row" id="cfgRow" style="display:none">
+      <span class="lbl">工作表</span>
+      <select class="sel" id="selA"></select>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--t4)" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      <select class="sel" id="selB"></select>
+      <div class="cfg-sep"></div>
+      <div class="tog" id="togDiff">
+        <div class="tog-track" id="togT"><div class="tog-dot"></div></div>
+        <span class="tog-txt">仅显示差异</span>
+      </div>
+      <div style="flex:1"></div>
+      <button class="btn btn-g" id="btnSwap" title="交换 A / B">⇄ 交换</button>
+      <button class="btn btn-go" id="btnGo" disabled>开始对比</button>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="result" id="resultArea" style="display:none">
+    <div class="stats" id="statsRow"></div>
+    <div class="flt" id="fltRow"></div>
+    <div class="tw" id="tblWrap"></div>
+  </div>
+
+</div>
+
+<script>
+const COLS=[
+  {i:0,n:'序号'},{i:1,n:'料号'},{i:2,n:'上阶BOM名称'},{i:3,n:'BOM层级'},
+  {i:4,n:'型号'},{i:5,n:'物料描述'},{i:6,n:'单耗'},{i:7,n:'替代关系'},
+  {i:8,n:'位号'},{i:9,n:'生产厂家'},{i:10,n:'是否环保'},{i:11,n:'湿敏属性'}
+  // ,{i:12,n:'物料更新时间'}
+];
+
+let wbA=null,wbB=null,snA=[],snB=[];
+let rawA=null,rawB=null;
+let diffs=[],flt='all',diffOnly=false;
+
+/* ── Upload ── */
+['A','B'].forEach(id=>{
+  const box=document.getElementById('box'+id), inp=document.getElementById('file'+id);
+  box.addEventListener('dragover',e=>{e.preventDefault();box.classList.add('over')});
+  box.addEventListener('dragleave',()=>box.classList.remove('over'));
+  box.addEventListener('drop',e=>{e.preventDefault();box.classList.remove('over');if(e.dataTransfer.files.length){inp.files=e.dataTransfer.files;load(id,e.dataTransfer.files[0])}});
+  inp.addEventListener('change',e=>{if(e.target.files.length)load(id,e.target.files[0])});
+});
+
+function load(id,f){
+  document.getElementById('name'+id).textContent=f.name;
+  document.getElementById('box'+id).classList.add('ok');
+  const r=new FileReader();
+  r.onload=e=>{
+    const wb=XLSX.read(e.target.result,{type:'array'});
+    if(id==='A'){wbA=wb;snA=wb.SheetNames}else{wbB=wb;snB=wb.SheetNames}
+    buildSels();
+    ready();
+  };
+  r.readAsArrayBuffer(f);
+}
+
+function buildSels(){
+  const sa=document.getElementById('selA'),sb=document.getElementById('selB');
+  sa.innerHTML='';sb.innerHTML='';
+  snA.forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=s;if(s==='BOM')o.selected=true;sa.appendChild(o)});
+  snB.forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=s;if(s==='BOM')o.selected=true;sb.appendChild(o)});
+  document.getElementById('cfgRow').style.display='flex';
+}
+
+function ready(){
+  const btn=document.getElementById('btnGo');
+  btn.disabled=!(wbA&&wbB);
+  if(wbA&&wbB){btn.classList.add('has-files');setTimeout(()=>btn.classList.remove('has-files'),4500)}
+}
+
+/* ── Sync sheets ── */
+document.getElementById('selA').addEventListener('change',function(){
+  const v=this.value;
+  const sb=document.getElementById('selB');
+  if(snB.includes(v)) sb.value=v;
+});
+document.getElementById('selB').addEventListener('change',function(){
+  const v=this.value;
+  const sa=document.getElementById('selA');
+  if(snA.includes(v)) sa.value=v;
+});
+
+/* ── Swap ── */
+document.getElementById('btnSwap').addEventListener('click',()=>{
+  [wbA,wbB]=[wbB,wbA];[snA,snB]=[snB,snA];
+  const na=document.getElementById('nameA'),nb=document.getElementById('nameB');
+  [na.textContent,nb.textContent]=[nb.textContent,na.textContent];
+  const ba=document.getElementById('boxA'),bb=document.getElementById('boxB');
+  ba.classList.toggle('ok',!!wbA);bb.classList.toggle('ok',!!wbB);
+  buildSels();ready();
+});
+
+/* ── Toggle ── */
+document.getElementById('togDiff').addEventListener('click',()=>{
+  diffOnly=!diffOnly;
+  document.getElementById('togT').classList.toggle('on',diffOnly);
+  if(diffs.length) render();
+});
+
+/* ── Compare ── */
+document.getElementById('btnGo').addEventListener('click', compare);
+
+function parse(wb,name){
+  const ws=wb.Sheets[name], rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+  const data=[];
+  for(let i=8;i<rows.length;i++){const r=rows[i];if(!r[1]&&!r[4]&&!r[5])continue;data.push(r)}
+  return data;
+}
+
+function compare(){
+  rawA=parse(wbA,document.getElementById('selA').value);
+  rawB=parse(wbB,document.getElementById('selB').value);
+  const mA=new Map(),mB=new Map();
+  rawA.forEach(r=>{const k=String(r[1]).trim();if(k)mA.set(k,r)});
+  rawB.forEach(r=>{const k=String(r[1]).trim();if(k)mB.set(k,r)});
+
+  diffs=[];const done=new Set();
+  mB.forEach((rB,k)=>{
+    done.add(k);
+    const rA=mA.get(k);
+    if(!rA){diffs.push({t:'add',key:k,nw:rB,old:null,chg:[]})}
+    else{
+      const ch=[];
+      COLS.forEach(c=>{const ov=String(rA[c.i]??'').trim(),nv=String(rB[c.i]??'').trim();if(ov!==nv)ch.push({col:c.n,old:ov,new:nv})});
+      if(ch.length) diffs.push({t:'mod',key:k,nw:rB,old:rA,chg:ch});
+      else diffs.push({t:'same',key:k,nw:rB,old:rA,chg:[]});
+    }
+  });
+  mA.forEach((rA,k)=>{if(!done.has(k))diffs.push({t:'del',key:k,nw:null,old:rA,chg:[]})});
+
+  const ord={del:0,mod:1,add:2,same:3};
+  diffs.sort((a,b)=>ord[a.t]-ord[b.t]);
+  flt='all';
+  render();
+}
+
+function render(){
+  document.getElementById('resultArea').style.display='block';
+  renderStats();renderFlt();renderTbl();
+}
+
+function renderStats(){
+  const c={add:0,del:0,mod:0,same:0};
+  diffs.forEach(d=>c[d.t]++);
+  const el=document.getElementById('statsRow');
+  el.innerHTML=`
+    <div class="pill"><b>${diffs.length}</b> 条记录</div>
+    <div class="pill pill-d">删除 <b>${c.del}</b></div>
+    <div class="pill pill-a">新增 <b>${c.add}</b></div>
+    <div class="pill pill-m">变更 <b>${c.mod}</b></div>
+    ${diffOnly?'':`<div class="pill">无变化 <b>${c.same}</b></div>`}
+  `;
+}
+
+function renderFlt(){
+  const el=document.getElementById('fltRow');
+  const c={all:0,del:0,add:0,mod:0,same:0};
+  diffs.forEach(d=>{c.all++;c[d.t]++});
+  const btns=[
+    {f:'all',l:'全部'},
+    {f:'del',l:'删除'},
+    {f:'add',l:'新增'},
+    {f:'mod',l:'变更'},
+  ];
+  if(!diffOnly) btns.push({f:'same',l:'无变化'});
+  el.innerHTML=btns.map(b=>`<button class="fb${flt===b.f?' on':''}" data-f="${b.f}">${b.l} ${c[b.f]}</button>`).join('')
+    +`<div class="sp"></div><div class="sbox"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><input id="sInput" placeholder="料号 / 型号 / 描述"></div>`;
+  el.querySelectorAll('.fb').forEach(b=>b.addEventListener('click',()=>{flt=b.dataset.f;renderFlt();renderTbl()}));
+  document.getElementById('sInput').addEventListener('input',()=>renderTbl());
+}
+
+function renderTbl(){
+  const q=(document.getElementById('sInput')?.value||'').toLowerCase();
+  let list=diffs;
+  if(diffOnly) list=list.filter(d=>d.t!=='same');
+  if(flt!=='all') list=list.filter(d=>d.t===flt);
+  if(q) list=list.filter(d=>{const r=d.nw||d.old;return[1,4,5,9].some(ci=>String(r[ci]).toLowerCase().includes(q))});
+
+  if(!list.length){document.getElementById('tblWrap').innerHTML='<div class="empty"><p>没有匹配的记录</p></div>';return}
+
+  let h='<table><thead><tr><th style="width:52px">状态</th>';
+  COLS.forEach(c=>h+=`<th>${c.n}</th>`);
+  h+='</tr></thead><tbody>';
+
+  list.forEach(d=>{
+    const cls={add:'ra',del:'rd',mod:'rm',same:''}[d.t];
+    const tg={add:'tg-a',del:'tg-d',mod:'tg-m',same:'tg-s'}[d.t];
+    const lb={add:'NEW',del:'DEL',mod:'MOD',same:'—'}[d.t];
+    h+=`<tr class="${cls}"><td><span class="tg ${tg}">${lb}</span></td>`;
+    const row=d.nw||d.old;
+    COLS.forEach(c=>{
+      const v=String(row[c.i]??'').trim();
+      if(d.t==='same'){h+=`<td title="${esc(v)}">${esc(v)||'—'}</td>`}
+      else if(d.t==='add'){h+=`<td title="${esc(v)}"><span class="dn">${esc(v)}</span></td>`}
+      else if(d.t==='del'){h+=`<td title="${esc(v)}"><span class="dl">${esc(v)}</span></td>`}
+      else{
+        const ch=d.chg.find(x=>x.col===c.n);
+        if(ch) h+=`<td title="${esc(ch.old)} → ${esc(ch.new)}"><div class="dx"><span class="dl">${esc(ch.old)}</span><span class="dn">${esc(ch.new)}</span></div></td>`;
+        else h+=`<td title="${esc(v)}">${esc(v)}</td>`;
+      }
+    });
+    h+='</tr>';
+  });
+  h+='</tbody></table>';
+  document.getElementById('tblWrap').innerHTML=h;
+}
+
+function esc(s){return s?String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'):''}
+</script>
+</body>
+</html>
