@@ -20,7 +20,8 @@
       html{font-size:14px}
       body{font-family:var(--f);background:var(--bg);color:var(--t1);-webkit-font-smoothing:antialiased;overflow-x:hidden}
 
-      .app{max-width:1360px;margin:0 auto;padding:20px 32px 48px}
+      .app{max-width:1360px;margin:0 auto;padding:20px 32px 20px; min-height: 100vh; display: flex; flex-direction: column;}
+      .main-content { flex: 1; }
 
       /* ── HEADER & UPLOAD ── */
       .hdr{display:flex;align-items:center;gap:10px;margin-bottom:24px}
@@ -79,7 +80,6 @@
       .info-grid { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; color: var(--t2); align-items: center;}
       .info-grid span:nth-child(odd) { color: var(--t3); text-align: right; }
       .info-grid span:nth-child(even) { font-weight: 500; word-break: break-all; }
-      /* ★ 表头差异高亮样式 */
       .hdr-diff { background: var(--orange-l); color: var(--orange); padding: 2px 6px; border-radius: 4px; font-weight: 600; display: inline-block;}
 
       /* ── RESULT AREA ── */
@@ -172,69 +172,83 @@
       .diff-new { background: var(--green-l); color: var(--green); font-weight: 600; }
       .diff-arrow { text-align: center; color: var(--t4); transform: rotate(90deg); margin: -4px 0; font-size: 16px;}
 
-      /* ★ 滚动条样式优化：加宽、加滑道背景，提升拖拽体验 */
-      ::-webkit-scrollbar { width: 10px; height: 18px; }
+      /* ★ 滚动条样式优化 */
+      ::-webkit-scrollbar { width: 10px; height: 16px; }
       ::-webkit-scrollbar-track { background: #f2f3f5; border-radius: 5px; }
       ::-webkit-scrollbar-thumb { background: #c9cdd4; border-radius: 5px; border: 2px solid #f2f3f5; }
       ::-webkit-scrollbar-thumb:hover { background: #86909c; }
+
+      /* ── FOOTER ── */
+      .app-footer {
+          text-align: center; margin-top: 40px; padding-top: 24px;
+          border-top: 1px dashed var(--bd); color: var(--t3); font-size: 12px; line-height: 1.8;
+      }
+      .app-footer a { color: var(--t3); text-decoration: none; transition: color 0.2s; }
+      .app-footer a:hover { color: var(--blue); }
   </style>
 </head>
 <body>
 <div class="app">
+  <div class="main-content">
+    <div class="hdr">
+      <div class="hdr-bar"></div>
+      <h1>BOM Diff</h1>
+      <span class="sub">物料清单版本对比 Version 1.4.1 </span>
+    </div>
 
-  <div class="hdr">
-    <div class="hdr-bar"></div>
-    <h1>BOM Diff</h1>
-    <span class="sub">物料清单版本对比 Version 1.4.0 </span>
-  </div>
+    <div class="panel">
+      <div class="upload-grid">
+        <label class="upload-card uc-a" id="boxA">
+          <input type="file" id="fileA" accept=".xls,.xlsx">
+          <div class="uc-icon">A</div>
+          <div class="uc-label">文件 A <span style="color:var(--t3);font-weight:400">基准</span></div>
+          <div class="uc-hint">点击或拖入 XLS / XLSX</div>
+          <div class="uc-file" id="nameA"></div>
+        </label>
 
-  <div class="panel">
-    <div class="upload-grid">
-      <label class="upload-card uc-a" id="boxA">
-        <input type="file" id="fileA" accept=".xls,.xlsx">
-        <div class="uc-icon">A</div>
-        <div class="uc-label">文件 A <span style="color:var(--t3);font-weight:400">基准</span></div>
-        <div class="uc-hint">点击或拖入 XLS / XLSX</div>
-        <div class="uc-file" id="nameA"></div>
-      </label>
+        <div class="upload-arrow">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </div>
 
-      <div class="upload-arrow">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        <label class="upload-card uc-b" id="boxB">
+          <input type="file" id="fileB" accept=".xls,.xlsx">
+          <div class="uc-icon">B</div>
+          <div class="uc-label">文件 B <span style="color:var(--t3);font-weight:400">对比</span></div>
+          <div class="uc-hint">点击或拖入 XLS / XLSX</div>
+          <div class="uc-file" id="nameB"></div>
+        </label>
       </div>
 
-      <label class="upload-card uc-b" id="boxB">
-        <input type="file" id="fileB" accept=".xls,.xlsx">
-        <div class="uc-icon">B</div>
-        <div class="uc-label">文件 B <span style="color:var(--t3);font-weight:400">对比</span></div>
-        <div class="uc-hint">点击或拖入 XLS / XLSX</div>
-        <div class="uc-file" id="nameB"></div>
-      </label>
-    </div>
-
-    <div class="cfg-row" id="cfgRow" style="display:none">
-      <span class="lbl">工作表</span>
-      <select class="sel" id="selA"></select>
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--t4)" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-      <select class="sel" id="selB"></select>
-      <div class="cfg-sep"></div>
-      <div class="tog" id="togDiff">
-        <div class="tog-track" id="togT"><div class="tog-dot"></div></div>
-        <span class="tog-txt">仅显示差异</span>
+      <div class="cfg-row" id="cfgRow" style="display:none">
+        <span class="lbl">工作表</span>
+        <select class="sel" id="selA"></select>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--t4)" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        <select class="sel" id="selB"></select>
+        <div class="cfg-sep"></div>
+        <div class="tog" id="togDiff">
+          <div class="tog-track" id="togT"><div class="tog-dot"></div></div>
+          <span class="tog-txt">仅显示差异</span>
+        </div>
+        <div style="flex:1"></div>
+        <button class="btn" id="btnSwap" title="交换 A / B">⇄ 交换基准</button>
+        <button class="btn btn-go" id="btnGo" disabled>开始对比</button>
       </div>
-      <div style="flex:1"></div>
-      <button class="btn" id="btnSwap" title="交换 A / B">⇄ 交换基准</button>
-      <button class="btn btn-go" id="btnGo" disabled>开始对比</button>
+
+      <div class="info-panel" id="infoPanel" style="display:none">
+        <div class="info-col" id="infoA"></div>
+        <div class="info-col" id="infoB"></div>
+      </div>
     </div>
 
-    <div class="info-panel" id="infoPanel" style="display:none">
-      <div class="info-col" id="infoA"></div>
-      <div class="info-col" id="infoB"></div>
+    <div class="result" id="resultArea" style="display:none">
+      <div class="flt" id="fltRow"></div>
+      <div class="tw" id="tblWrap"></div>
     </div>
   </div>
 
-  <div class="result" id="resultArea" style="display:none">
-    <div class="flt" id="fltRow"></div>
-    <div class="tw" id="tblWrap"></div>
+  <div class="app-footer">
+    所属公司：<a href="https://nationgate.com.my">NationGate Computing Sdn. Bhd.</a> &nbsp;|&nbsp;
+    开发者邮箱：<a href="mailto:hua-ye.liu@nationgate.com.my">hua-ye.liu@nationgate.com.my</a>
   </div>
 
 </div>
@@ -256,8 +270,7 @@
     {i:8,n:'位号'},{i:9,n:'生产厂家'},{i:10,n:'是否环保'},{i:11,n:'湿敏属性'}
   ];
 
-  // ★ 加入了“提交时间”
-  const HEADER_KEYS = ['提交时间', '项目配置名', '描述', 'BOM名称', '版本', '产品配置描述'];
+  const HEADER_KEYS = ['提交时间','版本', '项目配置名', '描述', 'BOM名称', '产品配置描述'];
 
   let wbA=null,wbB=null,snA=[],snB=[];
   let rawA=null,rawB=null;
@@ -392,19 +405,15 @@
     render();
   }
 
-  // ★ 渲染表头信息，并带有差异比对高亮功能
   function renderHeaderInfo(infoA, infoB) {
     const panel = document.getElementById('infoPanel');
     panel.style.display = 'flex';
 
-    // 内部函数：生成每一侧的信息面板
     const buildHTML = (myInfo, otherInfo, tagLabel, tagClass) => {
       let html = `<h4><span class="info-tag ${tagClass}">${tagLabel}</span> 表头配置</h4><div class="info-grid">`;
       HEADER_KEYS.forEach(k => {
-        // 只要双方中有一方存在该信息，就展示出来
         if(myInfo[k] || otherInfo[k]) {
           const val = myInfo[k] || '—';
-          // 判断双方内容是否不一致
           const isDiff = (myInfo[k] || '') !== (otherInfo[k] || '');
           const spanClass = isDiff ? 'hdr-diff' : '';
           html += `<span>${k}：</span><span class="${spanClass}">${esc(val)}</span>`;
@@ -462,7 +471,10 @@
     COLS.forEach(c=>h+=`<th>${c.n}</th>`);
     h+=`<th style="width:70px; right:0; position:sticky; background:#f2f3f5; z-index:4; text-align:center;">操作</th></tr></thead><tbody>`;
 
-    list.forEach((d, index)=>{
+    list.forEach((d)=>{
+      // ★ 核心修复：永远获取当前数据在全局原始数据 `diffs` 中的绝对索引，防止过滤后索引错位
+      const originalIndex = diffs.indexOf(d);
+
       const cls={add:'ra',del:'rd',mod:'rm',same:''}[d.t];
       const tg={add:'tg-a',del:'tg-d',mod:'tg-m',same:'tg-s'}[d.t];
       const lb={add:'新增',del:'删除',mod:'变更',same:'—'}[d.t];
@@ -481,8 +493,9 @@
         }
       });
 
+      // 绑定绝对索引
       h+=`<td style="right:0; position:sticky; background:inherit; text-align:center;">
-          <button class="btn-sm" onclick='openDrawer(${index})'>查看</button>
+          <button class="btn-sm" onclick='openDrawer(${originalIndex})'>查看</button>
         </td></tr>`;
     });
     h+='</tbody></table>';
